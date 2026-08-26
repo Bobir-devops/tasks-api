@@ -1,0 +1,111 @@
+name: Tasks API CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build
+        run: dotnet build
+
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Test
+        run: dotnet test
+
+
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t tasks-api .
+
+
+  scan:
+    needs: docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t tasks-api .
+
+      - name: Scan image
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: tasks-api
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+
+  deploy:
+    needs: scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t tasks-api .
+
+      - name: Run container
+        run: |
+          docker run -d \
+            --name tasks-api \
+            -p 8080:8080 \
+            tasks-api
+
+
+  notify:
+    needs: [build, test, docker, scan, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Telegram notification
+        run: |
+          if [ "${{ needs.deploy.result }}" = "success" ]; then
+            MESSAGE="✅ Tasks API deployment successful"
+          else
+            MESSAGE="❌ Tasks API deployment failed"
+          fi
+
+          curl -s -X POST \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="$MESSAGE"
