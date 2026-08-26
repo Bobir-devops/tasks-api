@@ -97,22 +97,42 @@ jobs:
 
   notify:
     needs: [build, test, docker, scan, deploy]
-    if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    env:
+      BUILD_STATUS: ${{ needs.build.result }}
+      TEST_STATUS: ${{ needs.test.result }}
+      DOCKER_STATUS: ${{ needs.docker.result }}
+      SCAN_STATUS: ${{ needs.scan.result }}
+      DEPLOY_STATUS: ${{ needs.deploy.result }}
+      BOT_TOKEN_RAW: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      CHAT_ID_RAW: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
-      - name: Telegram notification
-        env:
-          BOT_TOKEN_RAW: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHAT_ID_RAW: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - name: Notify Telegram
         run: |
           BOT_TOKEN=$(echo -n "$BOT_TOKEN_RAW" | tr -d '[:space:]')
           CHAT_ID=$(echo -n "$CHAT_ID_RAW" | tr -d '[:space:]')
-          if [ "${{ needs.deploy.result }}" = "success" ]; then
-            MESSAGE="✅ Tasks API deployment successful"
+
+          if [ "$DEPLOY_STATUS" = "success" ]; then
+            ICON="✅"; MSG="Deployment successful"
+          elif [ "$DEPLOY_STATUS" = "skipped" ]; then
+            ICON="⛔"; MSG="Deployment SKIPPED (pipeline failed earlier)"
           else
-            MESSAGE="❌ Tasks API deployment failed"
+            ICON="❌"; MSG="Deployment FAILED"
           fi
-          curl -s -X POST \
-            "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+
+          TEXT="${ICON} *${MSG}*%0A%0A\
+          *Repo:* ${{ github.repository }}%0A\
+          *Branch:* ${{ github.ref_name }}%0A\
+          *Author:* ${{ github.actor }}%0A\
+          *Build:* ${BUILD_STATUS} \\| *Test:* ${TEST_STATUS} \\| *Docker:* ${DOCKER_STATUS} \\| *Scan:* ${SCAN_STATUS}%0A\
+          *Run:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
             -d chat_id="${CHAT_ID}" \
-            -d text="$MESSAGE"
+            -d parse_mode="Markdown" \
+            -d text="$TEXT")
+
+          echo "Telegram response: $RESPONSE"
+          echo "$RESPONSE" | grep -q '"ok":true' || (echo "Telegram xabari yetib bormadi!" && exit 1)
