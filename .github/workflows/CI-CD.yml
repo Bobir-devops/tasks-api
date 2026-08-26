@@ -1,16 +1,15 @@
-name: Tasks API CI/CD
+name: CI/CD TEST
 
 on:
   push:
     branches:
       - main
-      - test-ci
   pull_request:
     branches:
       - main
 
 jobs:
-
+# 1. BUILD JOB
   build:
     runs-on: ubuntu-latest
 
@@ -25,7 +24,7 @@ jobs:
 
       - name: Build
         run: dotnet build
-
+# 2. TEST JOB
 
   test:
     needs: build
@@ -43,7 +42,7 @@ jobs:
       - name: Test
         run: dotnet test
 
-
+# 3. DOCKER IMAGE BUILD JOB
   docker:
     needs: test
     runs-on: ubuntu-latest
@@ -55,7 +54,7 @@ jobs:
       - name: Build Docker image
         run: docker build -t tasks-api .
 
-
+# 4. DOCKER IMAGE SCAN JOB
   scan:
     needs: docker
     runs-on: ubuntu-latest
@@ -75,7 +74,7 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
 
-
+# 5. DEPLOY JOB
   deploy:
     needs: scan
     runs-on: ubuntu-latest
@@ -94,7 +93,7 @@ jobs:
             -p 8080:8080 \
             tasks-api
 
-
+# TELEGRAM NOTIFY JOB
   notify:
     needs: [build, test, docker, scan, deploy]
     runs-on: ubuntu-latest
