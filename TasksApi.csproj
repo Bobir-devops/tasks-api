@@ -6,4 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="TasksApi.Tests/**" />
+    <Content Remove="TasksApi.Tests/**" />
+    <None Remove="TasksApi.Tests/**" />
+    <EmbeddedResource Remove="TasksApi.Tests/**" />
+  </ItemGroup>
+
 </Project>
