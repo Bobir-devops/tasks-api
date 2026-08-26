@@ -1,6 +1,10 @@
 name: Tasks API CI/CD
 
 on:
+  push:
+    branches:
+      - main
+      - test-ci
   pull_request:
     branches:
       - main
