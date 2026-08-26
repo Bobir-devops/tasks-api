@@ -102,9 +102,11 @@ jobs:
     steps:
       - name: Telegram notification
         env:
-          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BOT_TOKEN_RAW: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID_RAW: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          BOT_TOKEN=$(echo -n "$BOT_TOKEN_RAW" | tr -d '[:space:]')
+          CHAT_ID=$(echo -n "$CHAT_ID_RAW" | tr -d '[:space:]')
           if [ "${{ needs.deploy.result }}" = "success" ]; then
             MESSAGE="✅ Tasks API deployment successful"
           else
