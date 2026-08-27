@@ -10,22 +10,19 @@
         path: /tmp/docker-ci-config
         state: directory
         mode: '0700'
-
     - name: Yangi image'ni tortib olish
       ansible.builtin.command: docker pull {{ image_name }}
       environment:
         DOCKER_CONFIG: /tmp/docker-ci-config
-
     - name: Eski konteynerni to'xtatish (bo'lsa)
       ansible.builtin.shell: docker stop {{ container_name }} && docker rm {{ container_name }}
       ignore_errors: true
-
     - name: Yangi konteynerni ishga tushirish
       ansible.builtin.command: >
         docker run -d
         --name {{ container_name }}
         --restart unless-stopped
-        -p 8080:8080
+        -p 8081:8080
         {{ image_name }}
       environment:
         DOCKER_CONFIG: /tmp/docker-ci-config
