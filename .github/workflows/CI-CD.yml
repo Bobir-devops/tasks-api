@@ -46,13 +46,23 @@ jobs:
   docker:
     needs: test
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Build Docker image
-        run: docker build -t tasks-api .
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push image
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          docker build -t ghcr.io/$OWNER_LC/tasks-api:latest .
+          docker push ghcr.io/$OWNER_LC/tasks-api:latest
 
 # 4. DOCKER IMAGE SCAN JOB
   scan:
@@ -77,21 +87,21 @@ jobs:
 # 5. DEPLOY JOB
   deploy:
     needs: scan
-    runs-on: ubuntu-latest
-
+    runs-on: self-hosted
+    if: github.event_name == 'push'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t tasks-api .
+      - name: Ansible o'rnatilganini tekshirish
+        run: which ansible-playbook || (sudo apt-get update && sudo apt-get install -y ansible)
 
-      - name: Run container
+      - name: Deploy (local)
+        env:
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/tasks-api:latest
         run: |
-          docker run -d \
-            --name tasks-api \
-            -p 8080:8080 \
-            tasks-api
+          IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          ansible-playbook -i localhost, -c local -e "IMAGE_NAME=$IMAGE_NAME" ansible/deploy.yml
 
 # TELEGRAM NOTIFY JOB
   notify:

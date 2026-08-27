@@ -1,0 +1,21 @@
+- hosts: localhost
+  connection: local
+  become: true
+  vars:
+    image_name: "{{ lookup('env', 'IMAGE_NAME') }}"
+    container_name: tasks-api
+  tasks:
+    - name: Yangi image'ni tortib olish
+      ansible.builtin.command: docker pull {{ image_name }}
+
+    - name: Eski konteynerni to'xtatish (bo'lsa)
+      ansible.builtin.shell: docker stop {{ container_name }} && docker rm {{ container_name }}
+      ignore_errors: true
+
+    - name: Yangi konteynerni ishga tushirish
+      ansible.builtin.command: >
+        docker run -d
+        --name {{ container_name }}
+        --restart unless-stopped
+        -p 8080:8080
+        {{ image_name }}
