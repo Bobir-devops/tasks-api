@@ -1,11 +1,20 @@
+# --- ansible/deploy.yml ---
 - hosts: localhost
   connection: local
   vars:
     image_name: "{{ lookup('env', 'IMAGE_NAME') }}"
     container_name: tasks-api
   tasks:
+    - name: CI uchun toza docker config yaratish
+      ansible.builtin.file:
+        path: /tmp/docker-ci-config
+        state: directory
+        mode: '0700'
+
     - name: Yangi image'ni tortib olish
       ansible.builtin.command: docker pull {{ image_name }}
+      environment:
+        DOCKER_CONFIG: /tmp/docker-ci-config
 
     - name: Eski konteynerni to'xtatish (bo'lsa)
       ansible.builtin.shell: docker stop {{ container_name }} && docker rm {{ container_name }}
@@ -18,3 +27,5 @@
         --restart unless-stopped
         -p 8080:8080
         {{ image_name }}
+      environment:
+        DOCKER_CONFIG: /tmp/docker-ci-config
