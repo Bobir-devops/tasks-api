@@ -1,6 +1,5 @@
 - hosts: localhost
   connection: local
-  become: true
   vars:
     image_name: "{{ lookup('env', 'IMAGE_NAME') }}"
     container_name: tasks-api
